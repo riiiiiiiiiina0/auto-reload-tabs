@@ -1,6 +1,6 @@
 {
   "name": "Chrome extension template",
   "description": "This is a simple chrome extension template.",
-  "version": "0.3",
+  "version": "0.4",
   "manifest_version": 3
 }
