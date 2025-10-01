@@ -52,6 +52,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     chrome.tabs.get(tabId, (tab) => {
       if (tab && !chrome.runtime.lastError) {
         chrome.tabs.reload(tabId);
+        // Reschedule the next reload if the tab still matches a pattern
+        const matchingPattern = getMatchingPattern(tab.url);
+        if (matchingPattern) {
+          scheduleReload(tabId, matchingPattern.reloadInterval);
+        }
       }
     });
   } else if (alarm.name === 'badge-updater') {
