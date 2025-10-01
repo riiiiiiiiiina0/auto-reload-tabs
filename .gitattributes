@@ -5,3 +5,4 @@ package-lock.json export-ignore
 /.github export-ignore
 /docs export-ignore
 /node_modules export-ignore
+/jules-scratch export-ignore
