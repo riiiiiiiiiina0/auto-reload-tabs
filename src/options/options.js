@@ -318,6 +318,130 @@
     return div.innerHTML;
   }
 
+  // Export patterns to JSON file
+  async function exportPatterns() {
+    const result = await chrome.storage.sync.get([STORAGE_KEY]);
+    const patterns = result[STORAGE_KEY] || [];
+
+    if (patterns.length === 0) {
+      showNotification('No patterns to export', 'warning');
+      return;
+    }
+
+    const data = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      patterns: patterns,
+    };
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reloader-bear-patterns-${
+      new Date().toISOString().split('T')[0]
+    }.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showNotification('Patterns exported successfully', 'success');
+  }
+
+  // Import patterns from JSON file
+  async function importPatterns() {
+    const fileInput = /** @type {HTMLInputElement} */ (
+      document.getElementById('importFileInput')
+    );
+
+    fileInput.onchange = async (e) => {
+      const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // Validate import data
+        if (!data.patterns || !Array.isArray(data.patterns)) {
+          showNotification('Invalid import file format', 'error');
+          return;
+        }
+
+        // Validate each pattern
+        const validPatterns = data.patterns.filter((p) => {
+          return (
+            p.urlPattern &&
+            typeof p.urlPattern === 'string' &&
+            p.intervalMinutes &&
+            typeof p.intervalMinutes === 'number' &&
+            p.intervalMinutes > 0
+          );
+        });
+
+        if (validPatterns.length === 0) {
+          showNotification('No valid patterns found in import file', 'error');
+          return;
+        }
+
+        // Get existing patterns
+        const result = await chrome.storage.sync.get([STORAGE_KEY]);
+        const existingPatterns = result[STORAGE_KEY] || [];
+
+        // Merge patterns, avoiding duplicates
+        const mergedPatterns = [...existingPatterns];
+        let importedCount = 0;
+        let duplicateCount = 0;
+
+        for (const pattern of validPatterns) {
+          const exists = mergedPatterns.some(
+            (p) => p.urlPattern === pattern.urlPattern,
+          );
+          if (!exists) {
+            mergedPatterns.push(pattern);
+            importedCount++;
+          } else {
+            duplicateCount++;
+          }
+        }
+
+        // Save merged patterns
+        await chrome.storage.sync.set({ [STORAGE_KEY]: mergedPatterns });
+
+        // Reload display
+        await loadPatterns();
+
+        // Notify background script to update timers
+        chrome.runtime.sendMessage({ action: 'patternsUpdated' });
+
+        // Show result message
+        let message = `Imported ${importedCount} pattern${
+          importedCount !== 1 ? 's' : ''
+        }`;
+        if (duplicateCount > 0) {
+          message += ` (${duplicateCount} duplicate${
+            duplicateCount !== 1 ? 's' : ''
+          } skipped)`;
+        }
+        showNotification(message, 'success');
+      } catch (error) {
+        console.error('Import error:', error);
+        showNotification(
+          'Failed to import patterns. Please check the file format.',
+          'error',
+        );
+      }
+
+      // Reset file input
+      fileInput.value = '';
+    };
+
+    fileInput.click();
+  }
+
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
     loadPatterns();
@@ -338,6 +462,15 @@
     /** @type {HTMLButtonElement} */ (
       document.getElementById('cancelDeleteBtn')
     ).addEventListener('click', closeDeleteModal);
+
+    // Import/Export buttons
+    /** @type {HTMLButtonElement} */ (
+      document.getElementById('exportBtn')
+    ).addEventListener('click', exportPatterns);
+
+    /** @type {HTMLButtonElement} */ (
+      document.getElementById('importBtn')
+    ).addEventListener('click', importPatterns);
 
     // Allow Enter key to save pattern
     /** @type {HTMLInputElement} */ (
