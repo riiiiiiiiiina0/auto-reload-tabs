@@ -3,6 +3,7 @@
   "name": "Reloader Bear",
   "version": "1.3",
   "description": "Automatically reloads tabs based on URL patterns.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAj4bkiGo9RU0Khh6EG+a7vxA1GSL15TojQFRW1rKD8qbnh86Bkt8zvwzjuiXmdoaxb02xGz/iCfENdJjRlWPUiV/UupNrHYuVYZmN3rghqWaErIbCmE0sYWRcVGBGOvUuigFdKHnQUSy1YuGIBfnl0xeU5Xfkav5ZjKym7kPfLds+cqDCpsYuOzecY0cJi03tBUt7ripcL1gd8nCLVcmSFFNDN9c0ytcDbnTMQf9/Dgku3xOZiFgokIR/q+qXWcVqRnRpcrmxJXHuM/SJDW21q+cQnRgzF+vsRy8YzaTiNmg7Y1ku75qjf1Rh8SbcQXt7C7SqLRU4WLCBLgco+ekm8wIDAQAB",
   "icons": {
     "16": "icons/icon-16x16.png",
     "32": "icons/icon-32x32.png",
