@@ -1,6 +1,18 @@
 {
-  "name": "Chrome extension template",
-  "description": "This is a simple chrome extension template.",
-  "version": "0.4",
-  "manifest_version": 3
+  "manifest_version": 3,
+  "name": "Tab Reloader",
+  "version": "1.0",
+  "description": "Automatically reloads tabs based on URL patterns.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms"
+  ],
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Tab Reloader"
+  }
 }

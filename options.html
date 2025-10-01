@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tab Reloader Options</title>
+  <style>
+    body { font-family: sans-serif; }
+    #patterns-list { list-style: none; padding: 0; }
+    #patterns-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px; border-bottom: 1px solid #ccc; }
+    .delete-btn { cursor: pointer; color: red; }
+  </style>
+</head>
+<body>
+  <h1>Tab Reloader Options</h1>
+
+  <h2>Add New Pattern</h2>
+  <form id="add-pattern-form">
+    <input type="text" id="url-pattern" placeholder="URL includes..." required size="50">
+    <input type="number" id="reload-interval" placeholder="Interval (minutes)" required min="1">
+    <button type="submit">Add</button>
+  </form>
+
+  <h2>Existing Patterns</h2>
+  <ul id="patterns-list"></ul>
+
+  <script src="options.js"></script>
+</body>
+</html>
