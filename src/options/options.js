@@ -5,6 +5,23 @@
   // Track which pattern is being edited (null if adding new)
   let editingIndex = null;
 
+  // Auto theme switcher - switches between winter (light) and coffee (dark)
+  function applyTheme() {
+    const isDarkMode = window.matchMedia(
+      '(prefers-color-scheme: dark)',
+    ).matches;
+    const theme = isDarkMode ? 'coffee' : 'winter';
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  // Apply theme on load
+  applyTheme();
+
+  // Listen for system theme changes
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', applyTheme);
+
   // Load and display patterns
   async function loadPatterns() {
     const result = await chrome.storage.sync.get([STORAGE_KEY]);
