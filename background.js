@@ -17,8 +17,10 @@ function scheduleReload(tabId, interval) {
 function updateBadge(tabId) {
   chrome.alarms.get(`reload-${tabId}`, (alarm) => {
     if (alarm) {
-      const remainingMinutes = Math.ceil((alarm.scheduledTime - Date.now()) / 60000);
-      chrome.action.setBadgeText({ text: `${remainingMinutes}m`, tabId });
+      const remainingMinutes = Math.ceil(
+        (alarm.scheduledTime - Date.now()) / 60000,
+      );
+      chrome.action.setBadgeText({ text: `${remainingMinutes}`, tabId });
     } else {
       chrome.action.setBadgeText({ text: '', tabId });
     }
@@ -40,7 +42,7 @@ function handleTabUpdate(tabId, changeInfo, tab) {
 
 chrome.tabs.onUpdated.addListener(handleTabUpdate);
 
-chrome.tabs.onActivated.addListener(activeInfo => {
+chrome.tabs.onActivated.addListener((activeInfo) => {
   updateBadge(activeInfo.tabId);
 });
 
