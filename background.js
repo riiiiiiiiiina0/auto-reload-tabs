@@ -60,9 +60,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       }
     });
   } else if (alarm.name === 'badge-updater') {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        updateBadge(tabs[0].id);
+    // Update badges for all tabs every minute
+    chrome.tabs.query({}, (tabs) => {
+      for (const tab of tabs) {
+        updateBadge(tab.id);
       }
     });
   }
