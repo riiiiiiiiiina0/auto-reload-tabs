@@ -1,7 +1,7 @@
 {
-  "name": "chrome-extension-template",
+  "name": "reloader-bear",
   "version": "1.0.0",
-  "description": "Chrome extension template",
+  "description": "Reloader Bear - Automatically reloads tabs based on URL patterns",
   "main": "index.js",
   "scripts": {},
   "keywords": [],

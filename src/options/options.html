@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reloader Bear - Options</title>
+  <link rel="stylesheet" href="../libs/daisyui@5.css">
+  <script src="../libs/tailwindcss@4.js"></script>
+</head>
+
+<body class="min-h-screen bg-base-200">
+  <div class="container mx-auto p-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold text-primary mb-2">🐻 Reloader Bear</h1>
+      <p class="text-base-content/70">Manage URL patterns for automatic tab reloading</p>
+    </div>
+
+    <!-- Add Pattern Form -->
+    <div class="card bg-base-100 shadow-xl mb-6">
+      <div class="card-body">
+        <h2 id="formTitle" class="card-title text-2xl mb-4">Add New Pattern</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="form-control md:col-span-2">
+            <label class="label">
+              <span class="label-text">URL Pattern</span>
+            </label>
+            <input type="text" id="urlPattern" placeholder="e.g., example.com or /dashboard"
+              class="input input-bordered w-full" />
+            <label class="label">
+              <span class="label-text-alt">Enter a string to match in the URL (case-sensitive)</span>
+            </label>
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Interval (minutes)</span>
+            </label>
+            <input type="number" id="intervalMinutes" min="1" value="5" class="input input-bordered w-full" />
+            <label class="label">
+              <span class="label-text-alt">Reload every N minutes</span>
+            </label>
+          </div>
+        </div>
+        <div class="card-actions justify-end mt-4">
+          <button id="cancelEditBtn" class="btn btn-ghost hidden">
+            Cancel
+          </button>
+          <button id="addPatternBtn" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                clip-rule="evenodd" />
+            </svg>
+            <span id="btnText">Add Pattern</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patterns List -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">Configured Patterns</h2>
+        <div id="patternsList" class="space-y-2">
+          <!-- Patterns will be dynamically added here -->
+        </div>
+        <div id="emptyState" class="text-center py-12 text-base-content/50">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p class="text-lg">No patterns configured yet</p>
+          <p class="text-sm mt-2">Add a URL pattern above to get started</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+
+</html>
