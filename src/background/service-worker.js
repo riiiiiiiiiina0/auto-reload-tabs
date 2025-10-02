@@ -181,3 +181,15 @@ async function updateBadgeForActiveTab() {
     console.log('Error updating badge:', error);
   }
 }
+
+// Listen for clicks on the extension's action button
+chrome.action.onClicked.addListener(async (tab) => {
+  // Only open options page for http/https URLs
+  if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+    // Store the current tab's URL for pre-filling the options page
+    await chrome.storage.local.set({ prefillUrl: tab.url });
+
+    // Open the options page
+    chrome.runtime.openOptionsPage();
+  }
+});
