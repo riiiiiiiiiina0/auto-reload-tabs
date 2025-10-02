@@ -214,7 +214,7 @@
     );
 
     urlPatternInput.value = '';
-    intervalMinutesInput.value = '5';
+    intervalMinutesInput.value = '30';
 
     // Update UI
     const formTitle = /** @type {HTMLHeadingElement} */ (
@@ -443,7 +443,19 @@
   }
 
   // Initialize
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Check for a URL to pre-fill
+    const result = await chrome.storage.local.get('prefillUrl');
+    if (result.prefillUrl) {
+      const urlPatternInput = /** @type {HTMLInputElement} */ (
+        document.getElementById('urlPattern')
+      );
+      urlPatternInput.value = result.prefillUrl;
+
+      // Clear the stored URL so it's not used again
+      await chrome.storage.local.remove('prefillUrl');
+    }
+
     loadPatterns();
 
     /** @type {HTMLButtonElement} */ (
