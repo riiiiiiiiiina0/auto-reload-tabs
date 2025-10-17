@@ -1,3 +1,16 @@
+// Import modules
+import { setupOAuthListener } from '../modules/oauth.js';
+import {
+  backupPatternsToRaindrop,
+  restorePatternsFromRaindrop,
+} from '../modules/raindropBackup.js';
+import { scheduleAutoBackup } from '../modules/autoBackup.js';
+import {
+  showBackupInProgressBadge,
+  showBackupSuccessBadge,
+  showBackupFailureBadge,
+} from '../modules/badge.js';
+
 // Storage key for patterns
 const STORAGE_KEY = 'reloadPatterns';
 
@@ -7,16 +20,41 @@ const tabTimers = new Map(); // tabId -> { pattern, intervalMs, nextReloadTime }
 // Track the badge update interval
 let badgeUpdateInterval = null;
 
+// Track restore operation
+let isRestoreInProgress = false;
+
+// Setup OAuth listener
+setupOAuthListener();
+
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Reloader Bear installed');
   initializeAllTabs();
+
+  // Auto restore from Raindrop on install/update
+  executeRaindropRestore({
+    source: 'onInstalled',
+    silent: true,
+    skipIfRunning: true,
+  });
 });
 
 // Initialize on startup
 chrome.runtime.onStartup.addListener(() => {
   console.log('Reloader Bear started');
   initializeAllTabs();
+
+  // Auto restore from Raindrop on startup
+  executeRaindropRestore({
+    source: 'startup',
+    silent: true,
+    skipIfRunning: true,
+  });
+
+  // Schedule periodic restore every 5 minutes
+  chrome.alarms.create('periodic_restore', {
+    periodInMinutes: 5,
+  });
 });
 
 // Listen for tab updates (URL changes)
@@ -45,6 +83,44 @@ chrome.windows.onFocusChanged.addListener(() => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'patternsUpdated') {
     initializeAllTabs();
+
+    // Trigger auto backup if requested
+    if (message.triggerAutoBackup) {
+      scheduleAutoBackup(message.reason || 'patterns_updated');
+    }
+  } else if (message.action === 'backup_to_raindrop') {
+    // Handle manual backup
+    (async () => {
+      try {
+        // Show in-progress badge
+        showBackupInProgressBadge();
+
+        const result = await backupPatternsToRaindrop();
+
+        // Update badge based on result
+        if (result.success) {
+          showBackupSuccessBadge();
+        } else {
+          showBackupFailureBadge();
+        }
+
+        sendResponse(result);
+      } catch (error) {
+        showBackupFailureBadge();
+        sendResponse({
+          success: false,
+          message: `Backup failed: ${error.message}`,
+        });
+      }
+    })();
+    return true; // Keep channel open for async response
+  } else if (message.action === 'restore_from_raindrop') {
+    // Handle manual restore
+    (async () => {
+      const result = await executeRaindropRestore({ source: 'manual' });
+      sendResponse(result);
+    })();
+    return true; // Keep channel open for async response
   }
 });
 
@@ -108,7 +184,7 @@ async function updateTabTimer(tabId, url) {
   updateBadgeForActiveTab();
 }
 
-// Handle alarms (reload tabs)
+// Handle alarms (reload tabs and periodic restore)
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name.startsWith('reload_tab_')) {
     const tabId = parseInt(alarm.name.replace('reload_tab_', ''), 10);
@@ -125,6 +201,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       console.log(`Tab ${tabId} no longer exists, cleaning up timer`);
       tabTimers.delete(tabId);
     }
+  } else if (alarm.name === 'periodic_restore') {
+    // Auto restore from Raindrop every 5 minutes
+    executeRaindropRestore({
+      source: 'periodic',
+      silent: true,
+      skipIfRunning: true,
+    });
   }
 });
 
@@ -185,7 +268,10 @@ async function updateBadgeForActiveTab() {
 // Listen for clicks on the extension's action button
 chrome.action.onClicked.addListener(async (tab) => {
   // Only open options page for http/https URLs
-  if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+  if (
+    tab.url &&
+    (tab.url.startsWith('http://') || tab.url.startsWith('https://'))
+  ) {
     // Store the current tab's URL for pre-filling the options page
     await chrome.storage.local.set({ prefillUrl: tab.url });
 
@@ -193,3 +279,68 @@ chrome.action.onClicked.addListener(async (tab) => {
     chrome.runtime.openOptionsPage();
   }
 });
+
+// Listen for OAuth token changes to trigger restore
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  // Detect when OAuth token is added (not updated)
+  if (areaName === 'sync' && changes.oauthAccessToken) {
+    const { oldValue, newValue } = changes.oauthAccessToken;
+
+    // If token was just added (user just logged in)
+    if (!oldValue && newValue) {
+      console.log('[Raindrop] OAuth login detected, triggering restore');
+      executeRaindropRestore({
+        source: 'oauth_login',
+        silent: false,
+        skipIfRunning: false,
+      });
+    }
+  }
+});
+
+/**
+ * Execute Raindrop restore with options
+ */
+async function executeRaindropRestore(options = {}) {
+  const { source = 'unknown', silent = false, skipIfRunning = false } = options;
+
+  // Prevent concurrent restores
+  if (isRestoreInProgress) {
+    if (skipIfRunning) {
+      console.log('[Raindrop] Restore already in progress, skipping');
+      return null;
+    }
+    return {
+      success: false,
+      message: 'A restore is already running.',
+    };
+  }
+
+  isRestoreInProgress = true;
+
+  try {
+    console.log(`[Raindrop] Restore started (source: ${source})`);
+    const result = await restorePatternsFromRaindrop();
+
+    if (result.success) {
+      // Update timers for all tabs with restored patterns
+      await initializeAllTabs();
+
+      if (!silent) {
+        console.log('[Raindrop] Restore completed:', result.stats);
+      }
+    } else if (!silent) {
+      console.warn('[Raindrop] Restore failed:', result.message);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[Raindrop] Restore error:', error);
+    return {
+      success: false,
+      message: `Restore failed: ${error.message}`,
+    };
+  } finally {
+    isRestoreInProgress = false;
+  }
+}

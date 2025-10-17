@@ -13,10 +13,21 @@
   "permissions": [
     "tabs",
     "storage",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
+  "host_permissions": [
+    "https://api.raindrop.io/*",
+    "https://ohauth.vercel.app/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://ohauth.vercel.app/*"
+    ]
+  },
   "background": {
-    "service_worker": "src/background/service-worker.js"
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
   },
   "action": {
     "default_title": "Reloader Bear"

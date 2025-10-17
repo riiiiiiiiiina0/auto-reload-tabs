@@ -8,6 +8,148 @@
   // Track which pattern is being deleted
   let deletingIndex = null;
 
+  // ========== Raindrop.io Integration ==========
+
+  /**
+   * Check and update OAuth status
+   */
+  async function updateOAuthStatus() {
+    const data = await chrome.storage.sync.get(['oauthAccessToken']);
+    const isLoggedIn = !!data.oauthAccessToken;
+
+    const notLoggedIn = document.getElementById('notLoggedIn');
+    const loggedIn = document.getElementById('loggedIn');
+
+    if (isLoggedIn) {
+      notLoggedIn.classList.add('hidden');
+      loggedIn.classList.remove('hidden');
+    } else {
+      notLoggedIn.classList.remove('hidden');
+      loggedIn.classList.add('hidden');
+    }
+
+    return isLoggedIn;
+  }
+
+  /**
+   * Handle OAuth login
+   */
+  function handleOAuthLogin() {
+    const extensionId = chrome.runtime.id;
+    const state = JSON.stringify({ extensionId });
+    const encodedState = encodeURIComponent(state);
+    const oauthUrl = `https://ohauth.vercel.app/oauth/raindrop?state=${encodedState}`;
+
+    // Open OAuth page in new tab
+    chrome.tabs.create({ url: oauthUrl });
+  }
+
+  /**
+   * Handle OAuth logout
+   */
+  async function handleOAuthLogout() {
+    if (!confirm('Are you sure you want to logout from Raindrop.io?')) {
+      return;
+    }
+
+    await chrome.storage.sync.set({
+      oauthAccessToken: null,
+      oauthRefreshToken: null,
+      oauthExpiresAt: null,
+      autoBackupEnabled: false,
+    });
+
+    await updateOAuthStatus();
+    showNotification('Logged out from Raindrop.io', 'info');
+  }
+
+  /**
+   * Load auto backup setting
+   */
+  async function loadAutoBackupSetting() {
+    const data = await chrome.storage.sync.get(['autoBackupEnabled']);
+    const autoBackupToggle = document.getElementById('autoBackupToggle');
+    autoBackupToggle.checked = data.autoBackupEnabled === true;
+  }
+
+  /**
+   * Handle backup to Raindrop
+   */
+  async function handleBackupToRaindrop() {
+    const backupBtn = document.getElementById('backupBtn');
+
+    // Show loading state
+    const originalContent = backupBtn.innerHTML;
+    backupBtn.disabled = true;
+    backupBtn.innerHTML =
+      '<span class="loading loading-spinner loading-sm"></span> Backing up...';
+
+    try {
+      // Send message to background script
+      const response = await chrome.runtime.sendMessage({
+        action: 'backup_to_raindrop',
+      });
+
+      if (response?.success) {
+        showNotification(response.message, 'success');
+      } else {
+        showNotification(response.message || 'Backup failed', 'error');
+      }
+    } catch (error) {
+      showNotification('Backup failed: ' + error.message, 'error');
+    } finally {
+      // Restore button state
+      backupBtn.disabled = false;
+      backupBtn.innerHTML = originalContent;
+    }
+  }
+
+  /**
+   * Handle restore from Raindrop
+   */
+  async function handleRestoreFromRaindrop() {
+    if (
+      !confirm(
+        'This will replace all your local patterns with those from Raindrop. Continue?',
+      )
+    ) {
+      return;
+    }
+
+    const restoreBtn = document.getElementById('restoreBtn');
+
+    // Show loading state
+    const originalContent = restoreBtn.innerHTML;
+    restoreBtn.disabled = true;
+    restoreBtn.innerHTML =
+      '<span class="loading loading-spinner loading-sm"></span> Restoring...';
+
+    try {
+      // Send message to background script
+      const response = await chrome.runtime.sendMessage({
+        action: 'restore_from_raindrop',
+      });
+
+      if (response?.success) {
+        showNotification(response.message, 'success');
+        // Reload patterns display
+        await loadPatterns();
+        // Notify background to update timers
+        chrome.runtime.sendMessage({ action: 'patternsUpdated' });
+      } else {
+        showNotification(response.message || 'Restore failed', 'error');
+      }
+    } catch (error) {
+      showNotification('Restore failed: ' + error.message, 'error');
+    } finally {
+      // Restore button state
+      restoreBtn.disabled = false;
+      restoreBtn.innerHTML = originalContent;
+    }
+  }
+
+  // ========== End Raindrop.io Integration ==========
+
   // Auto theme switcher - switches between winter (light) and coffee (dark)
   function applyTheme() {
     const isDarkMode = window.matchMedia(
@@ -156,8 +298,12 @@
     // Reload display
     await loadPatterns();
 
-    // Notify background script to update timers
-    chrome.runtime.sendMessage({ action: 'patternsUpdated' });
+    // Notify background script to update timers and trigger auto backup
+    chrome.runtime.sendMessage({
+      action: 'patternsUpdated',
+      triggerAutoBackup: true,
+      reason: editingIndex !== null ? 'pattern_updated' : 'pattern_added',
+    });
   }
 
   // Edit a pattern
@@ -278,8 +424,12 @@
     await loadPatterns();
     showNotification('Pattern deleted', 'info');
 
-    // Notify background script to update timers
-    chrome.runtime.sendMessage({ action: 'patternsUpdated' });
+    // Notify background script to update timers and trigger auto backup
+    chrome.runtime.sendMessage({
+      action: 'patternsUpdated',
+      triggerAutoBackup: true,
+      reason: 'pattern_deleted',
+    });
 
     // Close modal and reset
     closeDeleteModal();
@@ -444,6 +594,17 @@
 
   // Initialize
   document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Raindrop status
+    await updateOAuthStatus();
+    await loadAutoBackupSetting();
+
+    // Listen for OAuth status changes
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'sync' && changes.oauthAccessToken) {
+        updateOAuthStatus();
+      }
+    });
+
     // Check for a URL to pre-fill
     const result = await chrome.storage.local.get('prefillUrl');
     if (result.prefillUrl) {
@@ -496,5 +657,33 @@
     ).addEventListener('keypress', (e) => {
       if (e.key === 'Enter') savePattern();
     });
+
+    // Raindrop OAuth buttons
+    document
+      .getElementById('loginBtn')
+      .addEventListener('click', handleOAuthLogin);
+    document
+      .getElementById('logoutBtn')
+      .addEventListener('click', handleOAuthLogout);
+
+    // Raindrop backup/restore buttons
+    document
+      .getElementById('backupBtn')
+      .addEventListener('click', handleBackupToRaindrop);
+    document
+      .getElementById('restoreBtn')
+      .addEventListener('click', handleRestoreFromRaindrop);
+
+    // Auto backup toggle
+    document
+      .getElementById('autoBackupToggle')
+      .addEventListener('change', async (e) => {
+        const enabled = e.target.checked;
+        await chrome.storage.sync.set({ autoBackupEnabled: enabled });
+        showNotification(
+          enabled ? 'Auto backup enabled' : 'Auto backup disabled',
+          'info',
+        );
+      });
   });
 })();
