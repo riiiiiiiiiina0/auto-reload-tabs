@@ -50,11 +50,6 @@ chrome.runtime.onStartup.addListener(() => {
     silent: true,
     skipIfRunning: true,
   });
-
-  // Schedule periodic restore every 5 minutes
-  chrome.alarms.create('periodic_restore', {
-    periodInMinutes: 5,
-  });
 });
 
 // Listen for tab updates (URL changes)
@@ -184,7 +179,7 @@ async function updateTabTimer(tabId, url) {
   updateBadgeForActiveTab();
 }
 
-// Handle alarms (reload tabs and periodic restore)
+// Handle alarms (reload tabs)
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name.startsWith('reload_tab_')) {
     const tabId = parseInt(alarm.name.replace('reload_tab_', ''), 10);
@@ -201,13 +196,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       console.log(`Tab ${tabId} no longer exists, cleaning up timer`);
       tabTimers.delete(tabId);
     }
-  } else if (alarm.name === 'periodic_restore') {
-    // Auto restore from Raindrop every 5 minutes
-    executeRaindropRestore({
-      source: 'periodic',
-      silent: true,
-      skipIfRunning: true,
-    });
   }
 });
 

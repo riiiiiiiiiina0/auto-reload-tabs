@@ -40,7 +40,6 @@ This document summarizes the Raindrop.io integration features implemented for th
 ### 4. Auto Restore from Raindrop
 
 - **Startup**: Fetches patterns when extension starts
-- **Periodic Sync**: Fetches every 5 minutes via Chrome alarms
 - **OAuth Login**: Fetches patterns after successful login
 - **Silent Mode**: Runs in background without notifications
 - **Conflict Prevention**: Prevents concurrent restore operations
